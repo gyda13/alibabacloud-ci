@@ -26,8 +26,7 @@ jobs:
         run: ./gradlew bootJar
 
       - name: Log in to Alibaba Cloud ACR
-        run: echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ secrets.ALIYUN_REGISTRY }} \
-          -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin
+        run: echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ secrets.ALIYUN_REGISTRY }} -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin
 
       - name: Build Docker image
         run: |
