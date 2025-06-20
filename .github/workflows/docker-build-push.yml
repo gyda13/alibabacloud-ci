@@ -1,0 +1,38 @@
+name: Build and Push Docker Image to Alibaba Cloud
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Spring Boot JAR
+        run: ./gradlew bootJar
+
+      - name: Log in to Alibaba Cloud ACR
+        run: echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ secrets.ALIYUN_REGISTRY }} \
+          -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_REPO }}:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_REPO }}:latest
