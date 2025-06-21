@@ -35,3 +35,16 @@ jobs:
       - name: Push Docker image
         run: |
           docker push ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_REPO }}:latest
+
+      - name: Deploy to ECS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ECS_HOST }}
+          username: ${{ secrets.ECS_USERNAME }}
+          key: ${{ secrets.ECS_PRIVATE_KEY }}
+          script: |
+            docker login ${{ secrets.ALIYUN_REGISTRY }} -u ${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PASSWORD }}
+            docker pull ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_REPO }}:latest
+            docker stop my-app || true
+            docker rm my-app || true
+            docker run -d -p 80:8080 --name my-app ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_REPO }}:latest
