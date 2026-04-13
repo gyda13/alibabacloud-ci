@@ -24,7 +24,7 @@
 
 ## Result
 
-- https://gyda.dev/api/hello
+- https://gyda.dev
 
 
 
