@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Who is Gyda?</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #00ff41;
+      --dim:   #00aa2a;
+      --bg:    #0d0d0d;
+      --card:  #111;
+      --red:   #ff4444;
+      --gold:  #ffd700;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--green);
+      font-family: 'Share Tech Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+      overflow-x: hidden;
+    }
+
+    /* scanline overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,.18) 2px,
+        rgba(0,0,0,.18) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    #screen {
+      width: 100%;
+      max-width: 760px;
+    }
+
+    /* ── HEADER ── */
+    #ascii-art {
+      white-space: pre;
+      font-size: clamp(0.38rem, 1.6vw, 0.72rem);
+      line-height: 1.15;
+      color: var(--green);
+      text-shadow: 0 0 8px var(--green);
+      margin-bottom: 1.2rem;
+      animation: flicker 6s infinite;
+    }
+
+    @keyframes flicker {
+      0%,100% { opacity:1 }
+      92%      { opacity:1 }
+      93%      { opacity:.6 }
+      94%      { opacity:1 }
+      96%      { opacity:.7 }
+      97%      { opacity:1 }
+    }
+
+    /* ── TERMINAL LINES ── */
+    #intro-lines p {
+      font-size: 1rem;
+      line-height: 1.8;
+      color: var(--green);
+    }
+    #intro-lines p.dim  { color: var(--dim); }
+    #intro-lines p.gold { color: var(--gold); }
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      height: 1.1em;
+      background: var(--green);
+      vertical-align: text-bottom;
+      animation: blink .7s steps(1) infinite;
+    }
+    @keyframes blink { 50% { opacity:0 } }
+
+    /* ── GAME BOX ── */
+    #game-box {
+      margin-top: 2.4rem;
+      border: 1px solid var(--dim);
+      border-radius: 4px;
+      padding: 1.6rem;
+      background: var(--card);
+      box-shadow: 0 0 24px rgba(0,255,65,.07);
+      display: none;
+    }
+
+    #question-counter {
+      font-size: .75rem;
+      color: var(--dim);
+      margin-bottom: .5rem;
+    }
+    #question-text {
+      font-size: 1.05rem;
+      color: var(--gold);
+      margin-bottom: 1.2rem;
+      min-height: 2.5rem;
+    }
+
+    .option-btn {
+      display: block;
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--dim);
+      color: var(--green);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .95rem;
+      padding: .65rem 1rem;
+      margin-bottom: .6rem;
+      cursor: pointer;
+      text-align: left;
+      border-radius: 2px;
+      transition: background .15s, border-color .15s;
+    }
+    .option-btn:hover:not(:disabled) {
+      background: rgba(0,255,65,.08);
+      border-color: var(--green);
+    }
+    .option-btn.correct  { border-color: var(--green); background: rgba(0,255,65,.18); color: #fff; }
+    .option-btn.wrong    { border-color: var(--red);   background: rgba(255,68,68,.12); color: var(--red); }
+    .option-btn:disabled { cursor: default; }
+
+    #feedback {
+      margin-top: .8rem;
+      min-height: 1.4rem;
+      font-size: .9rem;
+    }
+    #feedback.ok  { color: var(--green); }
+    #feedback.bad { color: var(--red); }
+
+    #next-btn {
+      margin-top: 1.2rem;
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .95rem;
+      padding: .55rem 1.4rem;
+      cursor: pointer;
+      display: none;
+      border-radius: 2px;
+      transition: background .15s;
+    }
+    #next-btn:hover { background: rgba(0,255,65,.12); }
+
+    /* ── PROGRESS BAR ── */
+    #progress-wrap {
+      height: 4px;
+      background: #1a1a1a;
+      border-radius: 2px;
+      margin-bottom: 1.2rem;
+      overflow: hidden;
+    }
+    #progress-bar {
+      height: 100%;
+      background: var(--green);
+      width: 0%;
+      transition: width .4s ease;
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    /* ── SCORE / END ── */
+    #end-box {
+      display: none;
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+    #end-box h2 { font-size: 1.4rem; margin-bottom: 1rem; color: var(--gold); }
+    #end-box p  { color: var(--dim); margin-bottom: .4rem; line-height: 1.8; }
+    #end-box .big { font-size: 3rem; color: var(--green); display: block; margin: .5rem 0 1rem; }
+    #restart-btn {
+      margin-top: 1.2rem;
+      background: transparent;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .9rem;
+      padding: .5rem 1.4rem;
+      cursor: pointer;
+      border-radius: 2px;
+    }
+    #restart-btn:hover { background: rgba(255,215,0,.1); }
+
+    /* ── LINKS ── */
+    #links {
+      margin-top: 2rem;
+      font-size: .85rem;
+      color: var(--dim);
+      text-align: center;
+      display: none;
+    }
+    #links a { color: var(--green); text-decoration: none; margin: 0 .6rem; }
+    #links a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div id="screen">
+
+  <pre id="ascii-art">
+  ██████╗ ██╗   ██╗██████╗  █████╗
+ ██╔════╝ ╚██╗ ██╔╝██╔══██╗██╔══██╗
+ ██║  ███╗ ╚████╔╝ ██║  ██║███████║
+ ██║   ██║  ╚██╔╝  ██║  ██║██╔══██║
+ ╚██████╔╝   ██║   ██████╔╝██║  ██║
+  ╚═════╝    ╚═╝   ╚═════╝ ╚═╝  ╚═╝</pre>
+
+  <div id="intro-lines"></div>
+
+  <div id="game-box">
+    <div id="progress-wrap"><div id="progress-bar"></div></div>
+    <div id="question-counter"></div>
+    <div id="question-text"></div>
+    <div id="options-wrap"></div>
+    <div id="feedback"></div>
+    <button id="next-btn">[ NEXT &rarr; ]</button>
+    <div id="end-box">
+      <h2>&gt;_ GAME OVER</h2>
+      <span class="big" id="score-display"></span>
+      <p id="score-msg"></p>
+      <button id="restart-btn">[ PLAY AGAIN ]</button>
+    </div>
+  </div>
+
+  <div id="links">
+    <a href="/api/whoami">[ /api/whoami ]</a>
+    <a href="https://github.com/gyda13" target="_blank">[ GitHub ]</a>
+    <a href="https://linkedin.com/in/gydam" target="_blank">[ LinkedIn ]</a>
+  </div>
+</div>
+
+<script>
+  // ── QUIZ DATA ─────────────────────────────────────────────────────────────
+  const quiz = [
+    {
+      q: "What language powers this backend?",
+      opts: ["Python 🐍", "Go 🐹", "Java ☕", "Node.js 🟢"],
+      ans: 2,
+      fact: "Spring Boot — classic enterprise Java, but make it cloud-native."
+    },
+    {
+      q: "Where is this app deployed?",
+      opts: ["AWS 🟠", "Alibaba Cloud 🔴", "GCP 🔵", "Azure 🟦"],
+      ans: 1,
+      fact: "Alibaba Cloud ECS — crossing into the East! 🌏"
+    },
+    {
+      q: "What does a backend developer secretly dream about?",
+      opts: ["Pixel-perfect UIs 🎨", "Database indexes 🗄️", "Zero-latency APIs ⚡", "All of the above 🤯"],
+      ans: 3,
+      fact: "Let's be honest... it's all of the above. 😄"
+    },
+    {
+      q: "What framework is this project built with?",
+      opts: ["Django", "Spring Boot", "Express.js", "Laravel"],
+      ans: 1,
+      fact: "Spring Boot — containers, clouds, and caffeine. ☕"
+    },
+    {
+      q: "What tool packages this app into a container?",
+      opts: ["Podman", "LXC", "Docker 🐳", "VirtualBox"],
+      ans: 2,
+      fact: "A Dockerfile is sitting right at the root of this repo!"
+    },
+    {
+      q: "Which build tool does this Java project use?",
+      opts: ["Maven", "Ant", "Gradle", "Bazel"],
+      ans: 2,
+      fact: "Gradle — fast, flexible, and the Dockerfile agrees. 🔨"
+    },
+    {
+      q: "What CI/CD tool was used to deploy this project?",
+      opts: ["Azure DevOps 🟦", "GitLab CI/CD 🦊", "GitHub Actions 🚀", "Jenkins 🤖"],
+      ans: 2,
+      fact: "GitHub Actions — automated builds and deployments straight to Alibaba Cloud ECS. 🔁"
+    },
+    {
+      q: "What do you think Gyda's superpower is?",
+      opts: [
+        "Turning coffee into APIs ☕→⚡",
+        "Deploying at 3 AM without breaking prod 🌙",
+        "Writing code that actually works first try 🎯",
+        "All of the above 🦸"
+      ],
+      ans: 3,
+      fact: "All three — and you'd better believe it. 😎"
+    }
+  ];
+
+  // ── INTRO TYPING ──────────────────────────────────────────────────────────
+  const lines = [
+    { text: "> Initializing profile....",        cls: "dim",  delay: 0    },
+    { text: "> Connection established ✓",        cls: "dim",  delay: 700  },
+    { text: "",                                  cls: "",     delay: 1200 },
+    { text: "> Hello, World. I'm Gyda.",         cls: "",     delay: 1600 },
+    { text: "> Backend developer. DevOps engineer. Perpetual learner.", cls: "", delay: 2600 },
+    { text: "> CI/CD pipelines and containers.", cls: "dim", delay: 3700 },
+    { text: "> Building and shipping to the cloud at scale.", cls: "dim", delay: 4400 },
+    { text: "",                                  cls: "",     delay: 4600 },
+    { text: "> Think you know me?",              cls: "gold", delay: 5000 },
+    { text: "> Let's play a game. 👾",           cls: "gold", delay: 5600 },
+  ];
+
+  const introEl = document.getElementById('intro-lines');
+  let cursorEl = null;
+
+  function typeLine(lineObj, resolve) {
+    const p = document.createElement('p');
+    if (lineObj.cls) p.className = lineObj.cls;
+    introEl.appendChild(p);
+
+    if (cursorEl) cursorEl.remove();
+
+    if (lineObj.text === '') {
+      resolve();
+      return;
+    }
+
+    let i = 0;
+    cursorEl = document.createElement('span');
+    cursorEl.className = 'cursor';
+    p.appendChild(cursorEl);
+
+    const speed = 28;
+    const iv = setInterval(() => {
+      p.textContent = lineObj.text.slice(0, i + 1);
+      p.appendChild(cursorEl);
+      i++;
+      if (i >= lineObj.text.length) {
+        clearInterval(iv);
+        resolve();
+      }
+    }, speed);
+  }
+
+  async function runIntro() {
+    for (const line of lines) {
+      await new Promise(r => setTimeout(r, line.delay === 0 ? 0 : 0)); // already staggered below
+      await new Promise(r => setTimeout(r, line.delay === 0 && lines.indexOf(line) > 0 ? 0 : line.delay));
+      await new Promise(r => typeLine(line, r));
+      await new Promise(r => setTimeout(r, 180));
+    }
+    if (cursorEl) cursorEl.remove();
+    await new Promise(r => setTimeout(r, 600));
+    startGame();
+  }
+
+  // ── GAME LOGIC ────────────────────────────────────────────────────────────
+  let current = 0, score = 0;
+
+  function startGame() {
+    current = 0; score = 0;
+    document.getElementById('game-box').style.display = 'block';
+    document.getElementById('end-box').style.display  = 'none';
+    document.getElementById('links').style.display    = 'block';
+    showQuestion();
+  }
+
+  function showQuestion() {
+    const q = quiz[current];
+    document.getElementById('question-counter').textContent =
+      `QUESTION ${current + 1} / ${quiz.length}`;
+    document.getElementById('question-text').textContent = '> ' + q.q;
+    document.getElementById('progress-bar').style.width =
+      ((current / quiz.length) * 100) + '%';
+
+    const wrap = document.getElementById('options-wrap');
+    wrap.innerHTML = '';
+    q.opts.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option-btn';
+      btn.textContent = `[${String.fromCharCode(65+i)}]  ${opt}`;
+      btn.addEventListener('click', () => selectAnswer(i));
+      wrap.appendChild(btn);
+    });
+
+    document.getElementById('feedback').textContent = '';
+    document.getElementById('feedback').className   = '';
+    document.getElementById('next-btn').style.display = 'none';
+  }
+
+  function selectAnswer(i) {
+    const q    = quiz[current];
+    const btns = document.querySelectorAll('.option-btn');
+    btns.forEach(b => b.disabled = true);
+
+    const fb = document.getElementById('feedback');
+    if (i === q.ans) {
+      score++;
+      btns[i].classList.add('correct');
+      fb.className   = 'ok';
+      fb.textContent = '✓  Correct!  ' + q.fact;
+    } else {
+      btns[i].classList.add('wrong');
+      btns[q.ans].classList.add('correct');
+      fb.className   = 'bad';
+      fb.textContent = '✗  Not quite — ' + q.fact;
+    }
+
+    document.getElementById('next-btn').style.display = 'inline-block';
+  }
+
+  document.getElementById('next-btn').addEventListener('click', () => {
+    current++;
+    if (current < quiz.length) {
+      showQuestion();
+    } else {
+      showEnd();
+    }
+  });
+
+  document.getElementById('restart-btn').addEventListener('click', () => {
+    document.getElementById('end-box').style.display = 'none';
+    startGame();
+  });
+
+  function showEnd() {
+    document.getElementById('options-wrap').innerHTML = '';
+    document.getElementById('question-counter').textContent = '';
+    document.getElementById('question-text').textContent    = '';
+    document.getElementById('feedback').textContent         = '';
+    document.getElementById('next-btn').style.display       = 'none';
+    document.getElementById('progress-bar').style.width     = '100%';
+
+    const pct = score / quiz.length;
+    let msg;
+    if (pct === 1)       msg = "Perfect score! You basically ARE me. Are you me? 🤨";
+    else if (pct >= .7)  msg = "Solid! You paid attention. Impressed. 👏";
+    else if (pct >= .4)  msg = "Not bad — but there's more to learn about me. Scroll up. 😄";
+    else                 msg = "Well... at least you made it to the end. Respect. 🫡";
+
+    document.getElementById('score-display').textContent = `${score} / ${quiz.length}`;
+    document.getElementById('score-msg').textContent     = msg;
+    document.getElementById('end-box').style.display     = 'block';
+  }
+
+  // ── BOOT ──────────────────────────────────────────────────────────────────
+  // flatten the delay into sequential timing
+  (async () => {
+    const introEl = document.getElementById('intro-lines');
+    for (const line of lines) {
+      await new Promise(r => setTimeout(r, line.delay ? 350 : 0));
+      await new Promise(r => typeLine(line, r));
+      await new Promise(r => setTimeout(r, 120));
+    }
+    if (cursorEl) cursorEl.remove();
+    await new Promise(r => setTimeout(r, 500));
+    startGame();
+  })();
+</script>
+</body>
+</html>
