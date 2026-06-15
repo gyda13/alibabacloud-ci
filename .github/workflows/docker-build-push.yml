@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+    - 'README.md'
+    - '**.md'
+    - 'docs/**'
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
