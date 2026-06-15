@@ -1,54 +1,53 @@
-name: Build, Push, and Deploy to Alibaba Cloud
-
+name: Build, Push, and Deploy to GCP
 on:
   push:
     branches:
       - main
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
-
+        uses: actions/checkout@v4
       - name: Set up Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-
       - name: Build Spring Boot JAR
         run: ./gradlew bootJar
 
-      - name: Log in to Alibaba Cloud ACR
-        run: echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ secrets.ALIYUN_REGISTRY }} -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
       - name: Build Docker image
-        run: |
-          docker build -t ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_REPO }}:latest .
-
+        run: docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.AR_REPO }}/my-app:latest .
       - name: Push Docker image
-        run: |
-          docker push ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_REPO }}:latest
+        run: docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.AR_REPO }}/my-app:latest
 
   deploy:
     runs-on: ubuntu-latest
     needs: build-and-push
     steps:
-      - name: Deploy to ECS via SSH
+      - name: Deploy to GCE via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.ECS_HOST }}
-          username: ${{ secrets.ECS_USERNAME }}
-          key: ${{ secrets.ECS_PRIVATE_KEY }}
+          host: ${{ secrets.GCE_HOST }}
+          username: ${{ secrets.GCE_USERNAME }}
+          key: ${{ secrets.GCE_SSH_KEY }}
           script: |
-            docker login ${{ secrets.ALIYUN_REGISTRY }} -u ${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PASSWORD }}
-            docker pull ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_REPO }}:latest
+            gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+            docker pull ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.AR_REPO }}/my-app:latest
             docker stop my-app || true
             docker rm my-app || true
-            docker run -d -p 8080:8080 --name my-app ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_REPO }}:latest
+            docker run -d -p 8080:8080 --name my-app \
+              -e JAVA_TOOL_OPTIONS="-Xmx320m -XX:MaxRAMPercentage=50" \
+              ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.AR_REPO }}/my-app:latest
